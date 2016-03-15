@@ -1,0 +1,80 @@
+---
+
+- name: django_app -> install djangocms to virtualenv
+  pip: name={{ item }} state=present virtualenv={{ django_virtualenv_path }}
+  sudo_user: "{{ django_user }}"
+  with_items:
+    - certifi
+    - pyopenssl
+    - ndg-httpsclient
+    - pyasn1
+    - djangocms-installer
+
+# - name: django_app ->  create requirements.txt
+#   template: >
+#     src=django_requirements.txt
+#     dest={{ django_requirements_file }}
+#     owner="{{django_user}}"
+#     group="{{django_user}}"
+
+# - name: django_app -> install app requirements.txt
+#   sudo_user: '{{ django_user }}'
+#   pip: requirements={{ django_requirements_file }}
+#        virtualenv={{ django_virtualenv_path }}
+
+- name: django_app -> check if djangocms project exist
+  shell: "ls -al {{ django_project_path }} | grep 'manage.py' | wc -l" #/home/django_user/hello/hello/manage.py 
+  register: cms_exist
+
+#- debug: var=cms_exist
+
+- name: django_app ->  install cms
+  sudo_user: "{{ django_user }}"
+  shell: ". {{ django_virtualenv_path }}/bin/activate && {{ django_virtualenv_path }}/bin/djangocms 
+  --languages {{ languages }} 
+  --cms-version {{ cms_version }} 
+  --django-version {{ django_version }} 
+  --i18n yes 
+  --use-tz yes 
+  --timezone {{ timezone }} 
+  --reversion yes 
+  --permissions yes 
+  --parent-dir {{ django_project_path }} 
+  --bootstrap yes 
+  --starting-page no 
+  --no-input 
+  --no-sync 
+  --no-user 
+  --utc
+  --db {{rds_db_engine}}://{{db_username}}:{{django_environment.DB_USER_PASSWORD}}@{{django_environment.DB_HOST}}/{{django_environment.DB_NAME}} {{django_application_name}}"
+  when: cms_exist.stdout != "1"
+
+- name: django_app -> migrate database
+  django_manage: command=migrate virtualenv={{ django_virtualenv_path }} app_path={{ django_project_path }}
+  run_once: true
+
+- name: django_app -> collectstatic
+  django_manage: command=collectstatic virtualenv={{ django_virtualenv_path }} app_path={{ django_project_path }}
+
+# - name: django_app ->  createsuperuser
+#   django_manage: command="createsuperuser --noinput --username=admin" app_path={{ django_project_path }}
+
+- name: create media directory
+  file: path={{ nginx_media_dir }} state=directory
+
+# - name: django_app ->  create local settings.py
+#   template: >
+#     src=django_settings.j2
+#     dest={{ django_settingspy_local }}
+#     owner="root"
+#     group="root"
+
+# - name: django_app -> check {{django_settingspy_local_filename}} included
+#   shell: "cat {{ django_application_path }}/settings.py | grep -vi grep | grep 'from settings_local import *' | wc -l"
+#   register: settings_py_inclided
+
+# - debug: var=settings_py_inclided
+
+# - name: django_app -> import {{django_settingspy_local_filename}} to settings.py
+#   shell: "echo 'from {{django_settingspy_local_filename}} import *' >> {{ django_application_path }}/settings.py"
+#   when: settings_py_inclided.stdout == '0'

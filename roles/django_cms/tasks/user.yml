@@ -1,0 +1,14 @@
+---
+
+- name: user -> creates new user directory
+  file: path={{django_user_home}} state=directory
+
+- name: user -> Create the application user
+  user: name={{ django_user }}
+        state=present
+        home={{django_user_home}}
+        createhome=yes
+        uid=1010
+
+- name: user -> set owner
+  file: path={{django_user_home}} state=directory owner={{ django_user }} group={{ django_user }}

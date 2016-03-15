@@ -1,0 +1,13 @@
+{{ gunicorn_access_log }} {{ gunicorn_error_log }} {
+    su {{django_user}} {{django_user}}
+    daily
+    missingok
+    rotate 7
+    compress
+    delaycompress
+    notifempty
+    create 640 {{django_user}} {{django_user}}
+    postrotate
+        kill -USR1 `cat {{ gunicorn_pid }}`
+    endscript
+}

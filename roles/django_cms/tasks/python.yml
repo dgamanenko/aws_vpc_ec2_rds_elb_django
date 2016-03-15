@@ -1,0 +1,38 @@
+---
+
+# - name: python -> update_cache
+#   apt: update_cache=yes cache_valid_time=3600
+
+- name: python -> install python packages
+  apt: name={{item}} state=present
+  with_items:
+    - python
+    - python-dev
+    - python3-dev
+    - python-software-properties
+    - python-pip
+    - libffi-dev 
+    - libssl-dev
+    - git
+    - python-setuptools
+    - libtiff5-dev
+    - libjpeg8-dev
+    - zlib1g-dev
+    - libfreetype6-dev
+    - liblcms2-dev
+    - libwebp-dev
+    - tcl8.6-dev
+    - tk8.6-dev
+    - python-tk
+
+- name: python -> update pip
+  pip: name={{item.name}}  state=latest
+  with_items:
+    - { name: 'pip' }
+
+- name: python -> install mysql packages
+  apt: name={{item}} state=present
+  with_items:
+    - libmysqlclient-dev
+    - mysql-client
+    - python-mysqldb

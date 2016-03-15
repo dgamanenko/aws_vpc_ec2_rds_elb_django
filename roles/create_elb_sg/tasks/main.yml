@@ -1,0 +1,28 @@
+---
+
+ - name: create_elb -> Create elb security group
+   local_action:
+     module: ec2_group
+     name: "{{ item.sg_name }}"
+     description: "{{ item.sg_description }}"
+     region: "{{ vpc_region }}" 
+     vpc_id: "{{ vpc.vpc_id }}"
+     state: present
+     rules: "{{ item.sg_rules }}"
+   with_items: elb_security_groups
+   register: elb_sg
+
+ - name: create_elb -> Tag the elb sg
+   local_action:
+     module: ec2_tag
+     resource: "{{ item.group_id}}"
+     region: "{{ vpc_region }}"
+     state: present
+     tags:
+       Name: "{{ vpc_name }}-{{ item.item.sg_name }}"
+   with_items: elb_sg.results
+
+ - name: create_elb -> Set the elb security group id as facts
+   set_fact:
+     elb_security_group: "{{ item.group_id}}"
+   with_items: elb_sg.results

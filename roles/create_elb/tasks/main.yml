@@ -1,0 +1,39 @@
+---
+ - name: create_elb -> Create elb
+   local_action:
+     module: ec2_elb_lb
+     name: "{{ load_balancer_name }}"
+     security_group_ids: "{{ elb_security_group }}"
+     state: present
+     region: "{{ vpc_region }}"
+     subnets: 
+       - "{{ public_subnet_1 }}"
+       - "{{ public_subnet_2 }}"
+     purge_subnets: "{{ elb_purge_subnets }}"
+     cross_az_load_balancing: "{{ elb_cross_az_load_balancing }}"
+     connection_draining_timeout: "{{ elb_connection_draining_timeout }}"
+     listeners:
+       - protocol: http
+         load_balancer_port: 80
+         instance_protocol: http
+         instance_port: 80
+     health_check:
+       ping_protocol: "{{ elb_ping_protocol }}"
+       ping_port: "{{ elb_ping_port }}"
+       response_timeout: "{{ elb_response_timeout }}"
+       interval: "{{ elb_interval }}"
+       unhealthy_threshold: "{{ elb_unhealthy_threshold }}"
+       healthy_threshold: "{{ elb_healthy_threshold }}"
+   register: web_elb
+
+ - name: create_elb -> Adding EC2 instances to the elb
+   local_action:
+     module: ec2_elb
+     region: "{{ vpc_region }}"
+     ec2_elbs: "{{ load_balancer_name }}"
+     instance_id: "{{ item }}"
+     state: present
+   with_items: 
+      - "{{ instance_id_1 }}"
+      - "{{ instance_id_2 }}"
+

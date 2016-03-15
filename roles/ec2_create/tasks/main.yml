@@ -1,0 +1,74 @@
+---
+
+ - name: webserver -> Create EC2 instances
+   local_action:
+     module: ec2
+     region: "{{ vpc_region }}"
+     group: "{{ webserver_security_groups[0].sg_name }}"
+     keypair: "{{ key_name }}"
+     instance_type: "{{ web_instance_type }}"
+     image: "{{ ami_image_id }}"
+     vpc_subnet_id: "{{ item }}"
+     assign_public_ip: True
+     wait: True
+     wait_timeout: 1000
+     user_data: |
+               #!/bin/sh
+               sudo apt-get update -y
+               sudo apt-get install nginx -y
+     instance_tags:
+       Name: "{{ vpc_name }}_webserver_instance"
+       Environment: "{{ env }}"
+       Role: "{{ server_role }}"
+       Application: "{{ application }}"
+   with_items:
+      - "{{ public_subnet_1 }}"
+      - "{{ public_subnet_2 }}"
+   register: web
+
+ #- debug: var=web
+
+ - name: webserver -> Collect instances facts
+   set_fact:
+     public_ip_1: "{{ web.results[0].instances[0].public_ip }}"
+     instance_id_1: "{{ web.results[0].instances[0].id }}"
+     public_dns_name_1: "{{ web.results[0].instances[0].public_dns_name }}"
+     public_ip_2: "{{   web.results[1].instances[0].public_ip }}"
+     instance_id_2: "{{ web.results[1].instances[0].id }}"
+     public_dns_name_2: "{{ web.results[1].instances[0].public_dns_name }}"
+
+ - name: webserver -> write ec2 facts to file (vars/ec2_info.yml)
+   shell: |
+     echo "public_dns_name_1: {{ public_dns_name_1 }}" > vars/ec2_info.yml
+     echo "public_dns_name_2: {{ public_dns_name_2 }}" >> vars/ec2_info.yml
+
+ # - name: webserver -> Add created EC2 instance to the local host group (./hosts)
+ #   local_action: 
+ #     module: lineinfile 
+ #     dest: "./hosts" 
+ #     regexp: "{{ item }}" 
+ #     insertafter: "[webserver]" 
+ #     line: "{{ item }}"
+ #   with_items:
+ #      - "{{ public_ip_1 }}"
+ #      - "{{ public_ip_2 }}" 
+
+ - name: webserver -> wait for ssh
+   local_action: 
+     module: wait_for 
+     host: "{{ item }}" 
+     port: 22 
+     state: started
+   with_items: 
+     - "{{ public_ip_1 }}"
+     - "{{ public_ip_2 }}" 
+
+ - name: webserver -> Create ssh group to dimanic EC2 instances login
+   add_host: 
+     hostname: "{{ item }}"
+     groupname: webserver
+   with_items: 
+     - "{{ public_ip_1 }}"
+     - "{{ public_ip_2 }}" 
+
+

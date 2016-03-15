@@ -1,0 +1,18 @@
+---
+ - hosts: all
+   sudo: yes 
+   remote_user: ubuntu
+   gather_facts: yes
+   pre_tasks:
+     - include_vars: vars/rds_info.yml
+   vars:
+    - django_app_git_url: 'https://github.com/dgamanenko/hello.git'
+    - django_application_name: 'hello'
+    # - django_app_git_private_key: "{{ lookup('file', '~/.ssh/github') }}"
+    - django_app_site_url: 'mysite.com'
+
+   roles:
+    - django_cms
+    #- backup_rds_db
+
+    

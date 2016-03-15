@@ -1,0 +1,33 @@
+server {
+	     listen              80 default_server;
+	     server_name_in_redirect off;
+	     server_name         localhost;
+	 
+	 
+	     access_log {{ nginx_access_log }};
+	     error_log {{ nginx_error_log }};
+	 
+	     location /static/ {
+	         alias   {{ nginx_static_dir }}/;
+	         add_header Vary Accept-Encoding;
+	         access_log off;
+	         gzip_static on;
+	         expires max;
+	         add_header Cache-Control public;
+	     }
+	 
+	     location /media/ {
+	         alias   {{ nginx_static_dir }}/;
+	         add_header Vary Accept-Encoding;
+	         access_log off;
+	         gzip_static on;
+	         expires max;
+	         add_header Cache-Control public;
+	     }
+	 
+	     location / {
+	 
+	          proxy_pass http://{{ gunicorn_bind_app }};
+	     }
+
+}

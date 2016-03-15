@@ -1,0 +1,25 @@
+---
+ - name: create_keypair -> Current login user
+   command: whoami
+   register: login_user
+
+ - name: create_keypair -> Check if ssh key exists
+   local_action:
+     module: stat
+     path: "{{ ssh_key_dir }}"
+   register: sshkey_result
+
+ - name: Gcreate_keypair -> enerate a new ssh key if not exist
+   local_action:
+      module: user
+      name: "{{ login_user.stdout }}"
+      generate_ssh_key: yes 
+      ssh_key_bits: 2048
+   when: sshkey_result.stat.exists == False
+
+ - name: create_keypair -> Creates an new ec2 keypair if not present
+   local_action:
+     module: ec2_key
+     region: "{{ vpc_region }}"
+     name: "{{ key_name }}"
+     key_material:  "{{ lookup('file',  ssh_key_dir ) }}"  

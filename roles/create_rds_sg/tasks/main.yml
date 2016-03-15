@@ -1,0 +1,37 @@
+---
+ - name: create_rds -> Create RDS Security Group
+   local_action:
+     module: ec2_group
+     name: "{{ item.sg_name }}"
+     description: "{{ item.sg_description }}"
+     region: "{{ vpc_region }}" 
+     vpc_id: "{{ vpc.vpc_id }}" 
+     state: present
+     rules: "{{ item.sg_rules }}"
+   with_items: rds_security_groups
+   register: rds_sg
+
+ - name: create_rds -> Tag rds sg
+   local_action:
+     module: ec2_tag
+     resource: "{{ item.group_id}}"
+     region: "{{ vpc_region }}"
+     state: present
+     tags:
+       Name: "{{ vpc_name }}-{{ item.item.sg_name }}"
+   with_items: rds_sg.results
+
+ - name: create_rds -> Collect rds security group id facts
+   set_fact:
+     rds_security_groups: "{{ item.group_id}}"
+   with_items: rds_sg.results
+
+ - name: create_rds -> Create rds subnet group
+   local_action:
+     module: rds_subnet_group
+     region: "{{ vpc_region }}"
+     state: present
+     name: "{{ rds_subnet_group }}"
+     description: "{{ rds_sg_description }}"
+     subnets:
+       "{{ vpc.subnets | map(attribute='id') | list }}"

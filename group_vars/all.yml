@@ -1,0 +1,166 @@
+---
+#vpc--------------------------------------------------------------------------------
+vpc_name: test-task
+vpc_region: sa-east-1
+vpc_cidr_block: 172.22.0.0/16
+public_cidr_1: 172.22.10.0/24
+public_az_1: "{{ vpc_region }}a"
+public_cidr_2: 172.22.20.0/24
+public_az_2: "{{ vpc_region }}c"
+# private_cidr: 172.22.30.0/24
+# private_az: "{{ vpc_region }}b"
+
+vpc_subnets:
+ - cidr: "{{ public_cidr_1 }}"
+   az: "{{ public_az_1 }}"
+   resource_tags: { "Name":"{{ vpc_name }}-{{ public_az_1 }}-public-subnet" }
+ - cidr: "{{ public_cidr_2 }}"
+   az: "{{ public_az_2 }}"
+   resource_tags: { "Name":"{{ vpc_name }}-{{ public_az_2 }}-public-subnet" }
+ # - cidr: "{{ private_cidr }}"
+ #   az: "{{ private_az }}"
+ #   resource_tags: { "Name":"{{ vpc_name }}-{{ private_az }}-private-subnet" }
+
+public_subnet_rt:
+ - subnets:
+     - "{{ public_cidr_1 }}"
+     - "{{ public_cidr_2 }}"
+   routes:
+     - dest: 0.0.0.0/0
+       gw: igw
+
+#ssh_keypair--------------------------------------------------------------------------------
+key_name: "{{ vpc_name }}-keypair"
+ssh_key_dir: ~/.ssh/id_rsa.pub 
+#webserver--------------------------------------------------------------------------------
+web_instance_type: t2.micro
+ami_image_id: ami-0fb83963
+
+webserver_security_groups:
+ - sg_name: webserver-sg
+   sg_description: webserver instance security group 
+   sg_rules:
+     - proto: tcp
+       from_port: 22
+       to_port: 22
+       cidr_ip: 0.0.0.0/0
+     - proto: tcp
+       from_port: 80
+       to_port: 80
+       cidr_ip: 0.0.0.0/0
+     - proto: tcp
+       from_port: 8000
+       to_port: 8000
+       cidr_ip: 0.0.0.0/0
+   sg_rules_egress:
+     - proto: all
+       cidr_ip: 0.0.0.0/0
+
+env: testtaskenv
+application: django_app
+server_role: webserver
+
+#rds--------------------------------------------------------------------------------
+multi_zone_option: no
+rds_instance_name: testtask-db
+rds_db_engine: MySQL
+rds_db_size: 5
+rds_db_name: django
+rds_instance_type: db.t2.micro
+rds_db_username: django
+rds_db_password: django_pass
+rds_subnet_group: testtask-subnet-group
+rds_sg_description: testtask django rds instance Subnet Group
+backup_retention_period: 0
+
+rds_security_groups:
+ - sg_name: testtaskdb-sg
+   sg_description: testtask-db rds security group instance
+   sg_rules:
+     - proto: tcp
+       from_port: 3306
+       to_port: 3306
+       group_name: "{{ webserver_security_groups[0].sg_name }}"
+       #group_name: testtask_db-sg_name
+
+
+#elb--------------------------------------------------------------------------------
+load_balancer_name: "{{ vpc_name }}-{{ server_role }}-elb"
+elb_purge_subnets: yes
+elb_cross_az_load_balancing: yes
+elb_ping_protocol: tcp
+elb_ping_port: 80
+elb_response_timeout: 5
+elb_interval: 30
+elb_unhealthy_threshold: 2
+elb_healthy_threshold: 10
+elb_connection_draining_timeout: 60 
+elb_security_groups:
+ - sg_name: "{{ load_balancer_name }}-sg"
+   sg_description: "{{ load_balancer_name }} security group"
+   sg_rules:
+     - proto: tcp
+       from_port: 80
+       to_port: 80
+       cidr_ip: 0.0.0.0/0
+#web-app--------------------------------------------------------------------------------
+#User
+django_user: 'django_user'
+django_user_home: '/home/{{ django_user }}'
+
+# # Git
+# django_app_git_url: ''
+# django_app_git_private_key: ''
+# django_git_branch_name: 'master'
+
+#application
+django_application_name: 'hello'
+django_virtualenv_root: '{{ django_user_home }}/env'
+django_virtualenv_path: '{{ django_virtualenv_root }}/{{ django_application_name }}'
+django_project_path: '{{ django_user_home }}/{{django_application_name}}'
+django_application_path: '{{ django_project_path }}/{{django_application_name}}'
+django_requirements_file: '{{ django_project_path }}/requirements.txt'
+
+django_settingspy_local_filename: 'local_settings'
+django_settingspy_local: '{{ django_application_path }}/{{django_settingspy_local_filename}}.py'
+
+django_environment:
+  DJANGO_SETTINGS_MODULE: '{{django_application_name}}.settings'
+  DATABASE_USER: "{{ db_username }}"
+  DATABASE_PASSWORD: "{{ db_password }}"
+  DB_ENGINE: 'django.db.backends.mysql'
+  DB_NAME: '{{ db_name }}'
+  DB_USER_NAME: '{{ db_username }}'
+  DB_USER_PASSWORD: '{{ db_password }}'
+  DB_HOST: '{{ db_hostname }}'
+  DB_PORT: '3306'
+
+#Django CMS
+languages: "en,ru"
+cms_version: "stable"
+django_version: "stable"
+timezone: "Europe/Kiev"
+
+#nginx
+nginx_access_log: '/var/log/nginx/{{django_application_name}}_access.log'
+nginx_error_log: '/var/log/nginx/{{django_application_name}}_error.log'
+nginx_static_dir: '{{django_project_path}}/static'
+nginx_media_dir: '{{django_project_path}}/media'
+
+# Supervisor
+supervisor_log_dir: '/var/log/supervisor'
+supervisor_socket: '/var/run/supervisor.sock'
+supervisor_pid: '/var/run/supervisord.pid'
+supervisor_log: '{{supervisor_log_dir}}/supervisord.log'
+supervisor_app_access_log: "{{ supervisor_log_dir }}/{{django_application_name}}_access.log"
+supervisor_app_error_log: "{{ supervisor_log_dir }}/{{django_application_name}}_error.log"
+
+# Gunicorn
+gunicorn_run_script: '{{django_virtualenv_path}}/gunicorn_start.py'
+gunicorn_bind_app: '127.0.0.1:8000'
+gunicorn_pid: '/tmp/{{django_application_name}}_gunicorn.pid'
+gunicorn_log_dir: '/var/log/gunicorn'
+gunicorn_access_log: '{{gunicorn_log_dir}}/{{django_application_name}}_access.log'
+gunicorn_error_log: '{{gunicorn_log_dir}}/{{django_application_name}}_error.log'
+
+

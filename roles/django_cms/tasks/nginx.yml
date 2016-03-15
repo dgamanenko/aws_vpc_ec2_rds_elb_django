@@ -1,0 +1,43 @@
+---
+
+# - debug: var=ec2_public_dns_name
+
+- name: nginx -> install nginx
+  apt: name=nginx state=present
+
+- name: nginx -> add www-data user to {{django_user}} group
+  user: name=www-data groups={{django_user}} append=yes
+
+- name: nginx | create nginx log folder
+  file: path=/var/log/nginx/
+        state=directory
+        mode=754
+
+- name: nginx -> create the nginx conf file
+  template: src=nginx/nginx_conf.j2
+            dest=/etc/nginx/nginx.conf
+            backup=yes
+  notify: reload nginx
+
+- name: nginx -> create the nginx app conf file
+  template: src=nginx/nginx_site_config.j2
+            dest=/etc/nginx/sites-available/{{ django_application_name }}
+            backup=yes
+  notify: reload nginx
+
+- name: nginx -> disable default site
+  command: rm /etc/nginx/sites-enabled/default
+           removes=/etc/nginx/sites-enabled/default
+  notify: reload nginx
+
+- name: nginx -> enable app
+  command: ln -s /etc/nginx/sites-available/{{ django_application_name }}
+           /etc/nginx/sites-enabled/{{ django_application_name }}
+           creates=/etc/nginx/sites-enabled/{{ django_application_name }}
+  notify: reload nginx
+
+- name: nginx -> service start
+  service: name=nginx state=started enabled=yes
+
+
+ 

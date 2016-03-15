@@ -1,0 +1,34 @@
+---
+
+ - name: create_rds -> Provision rds instance
+   local_action:
+     module: rds
+     command: create
+     region: "{{ vpc_region }}"
+     multi_zone: "{{ multi_zone_option }}"
+     subnet: "{{ rds_subnet_group }}"
+     vpc_security_groups: "{{ rds_security_groups }}" 
+     instance_name: "{{ rds_instance_name }}"
+     db_engine: "{{ rds_db_engine }}"
+     size: "{{ rds_db_size }}"
+     db_name: "{{ rds_db_name }}"
+     instance_type: "{{ rds_instance_type }}"
+     username: "{{ rds_db_username }}"
+     password: "{{ rds_db_password }}"
+     backup_retention: "{{ backup_retention_period }}"
+     wait: yes
+     wait_timeout: 1200
+     tags:
+       Environment: "{{ env }}"
+       Application: "{{ application }}"
+   register: rds
+
+ - name: create_rds -> write rds facts to file (vars/rds_info.yml)
+   shell: |
+     echo "db_hostname: {{ rds.instance.endpoint }}" > vars/rds_info.yml
+     echo "db_name: {{ rds_db_name }}" >> vars/rds_info.yml
+     echo "db_username: {{ rds_db_username }}" >> vars/rds_info.yml
+     echo "db_password: {{ rds_db_password }}" >> vars/rds_info.yml
+     
+
+

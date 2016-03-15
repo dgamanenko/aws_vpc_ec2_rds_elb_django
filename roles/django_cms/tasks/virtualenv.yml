@@ -1,0 +1,32 @@
+---
+
+- name: virtualenv -> install virtualenv
+  pip: name={{item}}
+  with_items:
+    - virtualenv
+    - virtualenvwrapper
+
+- name: virtualenv -> add .profile to run virtualenvwrapper
+  sudo_user: '{{ django_user }}'
+  template: src=user/{{item}} dest=~/{{item}}
+  with_items:
+    - .profile
+
+- name: virtualenv -> create the virtualenv
+  sudo_user: '{{ django_user }}'
+  command: virtualenv {{ django_virtualenv_path }} --python=/usr/bin/python2.7
+           creates={{ django_virtualenv_path }}/bin/activate
+
+- name: virtualenv -> add virtualenv wrapper postactivate script
+  sudo_user: '{{ django_user }}'
+  template: src=virtualenv/postactivate.j2
+            dest={{ django_virtualenv_path }}/bin/postactivate
+            mode=640
+
+- name: virtualenv -> permissions
+  file: path={{ django_virtualenv_path }}
+        owner={{ django_user }}
+        group={{ django_user }}
+        state=directory
+
+

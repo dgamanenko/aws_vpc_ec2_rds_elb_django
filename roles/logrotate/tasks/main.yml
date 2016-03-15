@@ -1,0 +1,12 @@
+---
+- name: logrotate | check logrotate is installed
+  apt: name=logrotate state=present
+
+- name: logrotate | rotate backup_rds app logs
+  apt: src=logrotate.d/backup_rds.j2 dest=/etc/logrotate.d/backuprds
+
+- name: logrotate | rotate gunicorn app logs
+  template: src=logrotate.d/gunicorn.j2 dest=/etc/logrotate.d/gunicorn
+
+- name: logrotate | rotate all nginx logs
+  template: src=logrotate.d/nginx.j2 dest=/etc/logrotate.d/nginx

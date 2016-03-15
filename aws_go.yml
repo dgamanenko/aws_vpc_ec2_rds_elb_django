@@ -1,0 +1,18 @@
+---
+#Provision AWS
+ - hosts: local
+   connection: local
+   gather_facts: no
+   roles:
+      - create_vpc
+      - create_keypair
+      - create_sg
+      - ec2_create
+      - create_rds_sg
+      - create_rds
+      - create_elb_sg
+      - create_elb
+
+
+
+     
